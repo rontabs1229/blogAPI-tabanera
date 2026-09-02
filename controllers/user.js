@@ -130,48 +130,72 @@ module.exports.updateProfile = async (req, res) => {
 		const targetId = req.params.id;
 		const currentUserId = req.user.id || req.user._id;
 
+		// Authorization check
 		if (currentUserId.toString() !== targetId && !req.user.isAdmin) {
 			return res.status(403).send({ message: 'You are not allowed to update this profile' });
 		}
 
-		const updates = {};
-		if (req.body.username) updates.username = req.body.username;
-		if (req.body.email) {
-			if (!req.body.email.includes("@")) {
-				return res.status(400).send({ message: 'Invalid email format' });
-			}
-			updates.email = req.body.email;
-		}
-
-		if (Object.keys(updates).length === 0) {
-			return res.status(400).send({ message: 'No valid fields to update' });
-		}
-
-		const existingUser = await User.findOne({
-			$or: [
-				...(updates.email ? [{ email: updates.email }] : []),
-				...(updates.username ? [{ username: updates.username }] : [])
-			],
-			_id: { $ne: targetId }
-		});
-
-		if (existingUser) {
-			if (existingUser.email === updates.email) {
-				return res.status(409).send({ message: "Email already registered" });
-			}
-			if (existingUser.username === updates.username) {
-				return res.status(409).send({ message: "Username already taken" });
-			}
-		}
-
-		const user = await User.findByIdAndUpdate(targetId, updates, { new: true }).select('-password');
+		// Find target user
+		const user = await User.findById(targetId);
 		if (!user) {
 			return res.status(404).send({ message: 'User not found' });
 		}
 
+		const { username, email, currentPassword, newPassword, image, avatar } = req.body;
+		const updates = {};
+
+		// 1. Username Update & Duplication Check
+		if (username && username !== user.username) {
+			const existingUsername = await User.findOne({ username, _id: { $ne: targetId } });
+			if (existingUsername) {
+				return res.status(409).send({ message: 'Username already taken' });
+			}
+			updates.username = username;
+		}
+
+		// 2. Email Update & Duplication Check
+		if (email && email !== user.email) {
+			if (!email.includes('@')) {
+				return res.status(400).send({ message: 'Invalid email format' });
+			}
+			const existingEmail = await User.findOne({ email, _id: { $ne: targetId } });
+			if (existingEmail) {
+				return res.status(409).send({ message: 'Email already registered' });
+			}
+			updates.email = email;
+		}
+
+		// 3. Avatar / Image Update
+		const uploadedImage = avatar || image || (req.file ? req.file.path : null);
+		if (uploadedImage) {
+			updates.image = uploadedImage; // Adjust property name to match your Mongoose Schema (e.g., avatar or image)
+		}
+
+		// 4. Password Update & Current Password Verification
+		if (newPassword) {
+			if (!currentPassword) {
+				return res.status(400).send({ message: 'Current password is required to update password' });
+			}
+
+			const isPasswordMatch = await bcrypt.compare(currentPassword, user.password);
+			if (!isPasswordMatch) {
+				return res.status(401).send({ message: 'Current password is incorrect' });
+			}
+
+			updates.password = await bcrypt.hash(newPassword, 10);
+		}
+
+		// Prevent empty update requests
+		if (Object.keys(updates).length === 0) {
+			return res.status(400).send({ message: 'No valid fields to update' });
+		}
+
+		// Save Updates
+		const updatedUser = await User.findByIdAndUpdate(targetId, updates, { new: true }).select('-password');
+
 		return res.status(200).send({
 			message: 'Profile updated successfully',
-			user
+			user: updatedUser
 		});
 	} catch (err) {
 		return errorHandler(err, req, res);
