@@ -2,7 +2,7 @@ const Blog = require("../models/Blog");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const { errorHandler } = require('../auth');
-const uploadToCloudinary = require("../utils/uploadToCloudinary");
+const { uploadToCloudinary, deleteFromCloudinary } = require("../utils/uploadToCloudinary");
 const cloudinary = require("../config/cloudinary");
 
 module.exports.createBlog = async (req, res) => {
@@ -41,20 +41,19 @@ module.exports.createBlog = async (req, res) => {
 		const blog = await newBlog.save();
 
 		const authorUser = await User.findById(author);
-		// Change this block in createBlog:
 		if (authorUser && authorUser.followers && authorUser.followers.length > 0) {
-		    const notifications = authorUser.followers.map(follower => ({
-		        // Fallback to 'follower' if it's directly an ObjectId or 'follower.user'
-		        recipient: follower.userId || follower.user || follower,
-		        sender: author,
-		        type: "post",
-		        message: `${req.user.username || 'Someone'} published a new blog post: "${blog.title}"`
-		    }));
+			const notifications = authorUser.followers.map(follower => ({
+				recipient: follower.userId || follower.user || follower,
+				sender: author,
+				type: "post",
+				message: `${req.user.username || 'Someone'} published a new blog post: "${blog.title}"`
+			}));
 
-		    await Notification.insertMany(notifications);
+			await Notification.insertMany(notifications);
 		}
 		return res.status(201).send(blog);
 	} catch (error) {
+		console.error("CREATE BLOG ERROR TRACE:", error);
 		return errorHandler(error, req, res);
 	}
 };
@@ -73,7 +72,6 @@ module.exports.getAllBlogs = async (req, res) => {
 
 		return res.status(200).send({ blogs });
 	} catch (error) {
-		console.error("CREATE BLOG ERROR TRACE:", error);
 		return errorHandler(error, req, res);
 	}
 };
@@ -156,6 +154,7 @@ module.exports.editBlog = async (req, res) => {
 			updatedBlog
 		});
 	} catch (error) {
+		console.error("EDIT BLOG ERROR TRACE:", error);
 		return errorHandler(error, req, res);
 	}
 };
@@ -190,7 +189,7 @@ module.exports.deleteBlog = async (req, res) => {
 
 		if (blog.images && blog.images.length > 0) {
 			const deletePromises = blog.images.map(image =>
-				cloudinary.uploader.destroy(image.publicId)
+				deleteFromCloudinary(image.publicId)
 			);
 			await Promise.all(deletePromises);
 		}
