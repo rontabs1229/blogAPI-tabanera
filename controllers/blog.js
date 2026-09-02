@@ -236,7 +236,7 @@ module.exports.addComment = async (req, res) => {
 		const updatedBlog = await Blog.findById(blogId)
 			.populate('author', 'username image')
 			.populate({ path: 'likes.userId', select: 'username' })
-			.populate({ path: 'comments.userId', select: 'username' });
+			.populate({ path: 'comments.userId', select: 'username image' });
 
 		if (blog.author.toString() !== userId.toString()) {
 			await Notification.create({
