@@ -13,4 +13,16 @@ const uploadToCloudinary = (buffer, folder = "blog") => {
 	});
 };
 
-module.exports = uploadToCloudinary;
+const deleteFromCloudinary = async (publicId) => {
+	if (!publicId) return;
+	try {
+		return await cloudinary.uploader.destroy(publicId);
+	} catch (error) {
+		console.error("Cloudinary deletion error:", error);
+	}
+};
+
+module.exports = {
+	uploadToCloudinary,
+	deleteFromCloudinary
+};
