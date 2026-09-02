@@ -51,6 +51,9 @@ module.exports.createBlog = async (req, res) => {
 
 			await Notification.insertMany(notifications);
 		}
+		
+		// Populate author before returning so the frontend immediately gets username & image
+		await blog.populate('author', 'username image');
 		return res.status(201).send(blog);
 	} catch (error) {
 		console.error("CREATE BLOG ERROR TRACE:", error);
@@ -61,6 +64,7 @@ module.exports.createBlog = async (req, res) => {
 module.exports.getAllBlogs = async (req, res) => {
 	try {
 		const blogs = await Blog.find({})
+			.populate('author', 'username image') // <-- FIX: Populate blog author username and image
 			.populate({
 				path: 'likes.userId',
 				select: 'username'
@@ -80,6 +84,7 @@ module.exports.getSpecificBlog = async (req, res) => {
 	try {
 		const { blogId } = req.params;
 		const blog = await Blog.findById(blogId)
+			.populate('author', 'username image') // <-- FIX: Populate blog author username and image
 			.populate({
 				path: 'likes.userId',
 				select: 'username'
@@ -149,6 +154,8 @@ module.exports.editBlog = async (req, res) => {
 		}
 
 		const updatedBlog = await blog.save();
+		await updatedBlog.populate('author', 'username image');
+		
 		return res.status(200).send({
 			message: "Blog updated successfully",
 			updatedBlog
@@ -223,7 +230,13 @@ module.exports.addComment = async (req, res) => {
 		}
 
 		blog.comments.push({ userId, comment });
-		const updatedBlog = await blog.save();
+		await blog.save();
+		
+		// Repopulate fields so updated blog payload has proper data structures
+		const updatedBlog = await Blog.findById(blogId)
+			.populate('author', 'username image')
+			.populate({ path: 'likes.userId', select: 'username' })
+			.populate({ path: 'comments.userId', select: 'username' });
 
 		if (blog.author.toString() !== userId.toString()) {
 			await Notification.create({
@@ -288,9 +301,14 @@ module.exports.updateComment = async (req, res) => {
 		targetComment.comment = comment;
 		await blog.save();
 
+		const updatedBlog = await Blog.findById(blogId)
+			.populate('author', 'username image')
+			.populate({ path: 'likes.userId', select: 'username' })
+			.populate({ path: 'comments.userId', select: 'username' });
+
 		return res.status(200).send({
 			message: "Comment updated successfully",
-			updatedBlog: blog
+			updatedBlog
 		});
 	} catch (error) {
 		return errorHandler(error, req, res);
@@ -331,9 +349,14 @@ module.exports.deleteComment = async (req, res) => {
 		blog.comments.pull(commentId);
 		await blog.save();
 
+		const updatedBlog = await Blog.findById(blogId)
+			.populate('author', 'username image')
+			.populate({ path: 'likes.userId', select: 'username' })
+			.populate({ path: 'comments.userId', select: 'username' });
+
 		return res.status(200).send({
 			message: "Comment deleted successfully",
-			updatedBlog: blog
+			updatedBlog
 		});
 	} catch (error) {
 		return errorHandler(error, req, res);
