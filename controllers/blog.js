@@ -41,17 +41,18 @@ module.exports.createBlog = async (req, res) => {
 		const blog = await newBlog.save();
 
 		const authorUser = await User.findById(author);
+		// Change this block in createBlog:
 		if (authorUser && authorUser.followers && authorUser.followers.length > 0) {
-			const notifications = authorUser.followers.map(follower => ({
-				recipient: follower.userId,
-				sender: author,
-				type: "post",
-				message: `${req.user.username || 'Someone'} published a new blog post: "${blog.title}"`
-			}));
+		    const notifications = authorUser.followers.map(follower => ({
+		        // Fallback to 'follower' if it's directly an ObjectId or 'follower.user'
+		        recipient: follower.userId || follower.user || follower,
+		        sender: author,
+		        type: "post",
+		        message: `${req.user.username || 'Someone'} published a new blog post: "${blog.title}"`
+		    }));
 
-			await Notification.insertMany(notifications);
+		    await Notification.insertMany(notifications);
 		}
-
 		return res.status(201).send(blog);
 	} catch (error) {
 		return errorHandler(error, req, res);
@@ -72,6 +73,7 @@ module.exports.getAllBlogs = async (req, res) => {
 
 		return res.status(200).send({ blogs });
 	} catch (error) {
+		console.error("CREATE BLOG ERROR TRACE:", error);
 		return errorHandler(error, req, res);
 	}
 };
