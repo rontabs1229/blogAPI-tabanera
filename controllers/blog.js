@@ -112,7 +112,7 @@ module.exports.editBlog = async (req, res) => {
 	}
 	try {
 		const { blogId } = req.params;
-		const { title, content, city, country } = req.body;
+		const { title, content, city, country, existingImages, removedImages } = req.body;
 		const userId = req.user.id || req.user._id;
 
 		const blog = await Blog.findById(blogId);
@@ -135,6 +135,45 @@ module.exports.editBlog = async (req, res) => {
 			if (country) blog.location.country = country;
 		}
 
+		// 1. Parse retained and removed images sent from frontend
+		let retainedImages = [];
+		if (existingImages) {
+			try {
+				retainedImages = JSON.parse(existingImages);
+			} catch (e) {
+				retainedImages = [];
+			}
+		}
+
+		let imagesToRemove = [];
+		if (removedImages) {
+			try {
+				imagesToRemove = JSON.parse(removedImages);
+			} catch (e) {
+				imagesToRemove = [];
+			}
+		}
+
+		// 2. Delete explicitly removed images from Cloudinary & filter them out of blog.images
+		for (const imgToRemove of imagesToRemove) {
+			// imgToRemove can be a string URL or an object { url, publicId }
+			const publicIdToDelete = typeof imgToRemove === 'string' ? null : imgToRemove.publicId;
+			if (publicIdToDelete) {
+				await deleteFromCloudinary(publicIdToDelete);
+			} else if (typeof imgToRemove === 'string') {
+				await deleteFromCloudinary(imgToRemove); // handles full URL extraction via updated utility
+			}
+		}
+
+		// Keep only the images present in retainedImages array
+		blog.images = blog.images.filter(img => {
+			return retainedImages.some(retained => 
+				(typeof retained === 'string' && retained === img.url) || 
+				(retained.url && retained.url === img.url)
+			);
+		});
+
+		// 3. Handle newly uploaded files
 		if (req.files && req.files.length > 0) {
 			const uploadPromises = req.files.map(file => uploadToCloudinary(file.buffer, "blog/posts"));
 			const results = await Promise.all(uploadPromises);
