@@ -259,6 +259,10 @@ module.exports.addComment = async (req, res) => {
 module.exports.getComments = (req, res) => {
 	const { blogId } = req.params;
 	Blog.findById(blogId)
+		.populate({
+			path: 'comments.userId',
+			select: 'username image'
+		})
 		.then(blog => {
 			if (!blog) {
 				return res.status(404).send({ message: "Blog not found" });
