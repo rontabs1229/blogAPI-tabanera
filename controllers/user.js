@@ -97,6 +97,22 @@ module.exports.getAllUsersProfile = async (req, res) => {
   }
 };
 
+module.exports.getUserById = async (req, res) => {
+  try {
+    const targetId = req.params.id;
+
+    const user = await User.findById(targetId).select('-password');
+
+    if (!user) {
+      return res.status(404).send({ message: 'User not found' });
+    }
+
+    return res.status(200).send({ user });
+  } catch (err) {
+    return errorHandler(err, req, res);
+  }
+};
+
 module.exports.uploadProfilePicture = async (req, res) => {
   try {
     const targetId = req.params.id;
