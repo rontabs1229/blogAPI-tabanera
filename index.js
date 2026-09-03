@@ -20,7 +20,8 @@ db.once("open", () => console.log("We're connected to the cloudbase database"));
 const corsOptions = {
     origin: [
         'http://localhost:5173',
-        'http://localhost:4000'
+        'http://localhost:4000',
+        'https://blogapp-tabanera.vercel.app'
     ],
     credentials: true
 };
