@@ -104,6 +104,28 @@ module.exports.getSpecificBlog = async (req, res) => {
 	}
 };
 
+module.exports.getBlogsByUser = async (req, res) => {
+	try {
+		const { id } = req.params;
+
+		const blogs = await Blog.find({ author: id })
+			.populate('author', 'username image')
+			.populate({
+				path: 'likes.userId',
+				select: 'username'
+			})
+			.populate({
+				path: 'comments.userId',
+				select: 'username'
+			})
+			.sort({ createdAt: -1 });
+
+		return res.status(200).send({ blogs });
+	} catch (error) {
+		return errorHandler(error, req, res);
+	}
+};
+
 module.exports.editBlog = async (req, res) => {
 	if (!req.user) {
 		return res.status(401).send({

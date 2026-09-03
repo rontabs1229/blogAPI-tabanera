@@ -7,6 +7,7 @@ const upload = require("../middleware/upload");
 router.post('/postBlog', userVerification, upload.array('images', 5), blogController.createBlog);
 router.get('/getBlogs', blogController.getAllBlogs);
 router.get('/getBlog/:blogId', blogController.getSpecificBlog);
+router.get('/user/:id', blogController.getBlogsByUser);
 router.patch("/updateBlog/:blogId", userVerification, upload.array('images', 5), blogController.editBlog);
 router.delete("/deleteBlog/:blogId", userVerification, blogController.deleteBlog);
 
