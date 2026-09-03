@@ -20,17 +20,18 @@ router.get('/notifications', userVerification, userController.getNotifications);
 router.patch('/notifications/:id/read', userVerification, userController.markNotificationRead);
 router.patch('/:id/promote', userVerification, userController.changeToAdmin);
 
-router.get('/logout', (req, res) => {
+router.get('/api/logout', (req, res) => {
     req.session.destroy(err => {
         if(err) {
             console.log("Error while destroying session: ", err);
+            res.status(500).json({ message: "Could not log out" });
         } else {
             req.logout(() => {
                 console.log("You are logged out!");
-                res.redirect('/');
-            })
+                res.status(200).json({ message: "Logged out successfully" });
+            });
         }
-    })
-})
+    });
+});
 
 module.exports = router;
