@@ -87,6 +87,16 @@ module.exports.getUserProfile = async (req, res) => {
   }
 };
 
+module.exports.getAllUsersProfile = async (req, res) => {
+  try {
+    const users = await User.find({}).select('-password');
+ 
+    return res.status(200).send({ users });
+  } catch (err) {
+    return errorHandler(err, req, res);
+  }
+};
+
 module.exports.uploadProfilePicture = async (req, res) => {
   try {
     const targetId = req.params.id;

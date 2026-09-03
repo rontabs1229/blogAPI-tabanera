@@ -10,6 +10,7 @@ const upload = multer({ storage });
 router.post('/register', userController.registerUser)
 router.post("/login", userController.loginUser);
 router.get('/details', userVerification, userController.getUserProfile);
+router.get('/getAllUsers', userController.getUserProfile);
 router.put('/profile/:id', userVerification, upload.single('image'), userController.updateProfile
 );
 router.patch('/profile/picture/:id', userVerification, upload.single('image'), userController.uploadProfilePicture);
