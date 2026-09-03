@@ -100,16 +100,39 @@ module.exports.getAllUsersProfile = async (req, res) => {
 module.exports.getUserById = async (req, res) => {
   try {
     const targetId = req.params.id;
+    // Extract current user ID from auth middleware if available
+    const currentUserId = req.user ? (req.user.id || req.user._id) : null;
 
     const user = await User.findById(targetId).select('-password');
-
     if (!user) {
       return res.status(404).send({ message: 'User not found' });
     }
 
-    return res.status(200).send({ user });
+    let status = 'none';
+
+    if (currentUserId) {
+      const currentIdStr = String(currentUserId);
+      const getId = (item) => String(item?.userId?._id || item?.userId || item?._id || item || '');
+
+      const isBuddy = user.travelBuddies.some(b => getId(b) === currentIdStr);
+      const isFollowing = user.followers.some(f => getId(f) === currentIdStr);
+      const followsYou = user.following.some(f => getId(f) === currentIdStr);
+
+      if (isBuddy) {
+        status = 'travel_buddy';
+      } else if (isFollowing) {
+        status = 'following';
+      } else if (followsYou) {
+        status = 'follows_you';
+      }
+    }
+
+    const userObj = user.toObject();
+    userObj.relationshipStatus = status;
+
+    return res.status(200).send({ user: userObj });
   } catch (err) {
-    return errorHandler(err, req, res);
+    return res.status(500).send({ message: err.message });
   }
 };
 
