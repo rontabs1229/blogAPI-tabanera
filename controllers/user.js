@@ -374,6 +374,7 @@ module.exports.unfollowUser = async (req, res) => {
       return res.status(409).send({ message: 'You are not following this user' });
     }
 
+    // Remove from followers and following lists
     targetUser.followers = targetUser.followers.filter(
       follower => getId(follower) !== currentUserId.toString()
     );
@@ -381,11 +382,12 @@ module.exports.unfollowUser = async (req, res) => {
       f => getId(f) !== targetId.toString()
     );
 
+    // Remove from travelBuddies on BOTH user objects
     currentUser.travelBuddies = currentUser.travelBuddies.filter(
       buddy => getId(buddy) !== targetId.toString()
     );
     targetUser.travelBuddies = targetUser.travelBuddies.filter(
-      buddy => getId(buddy) !== targetId.toString()
+      buddy => getId(buddy) !== currentUserId.toString()
     );
 
     await targetUser.save();
